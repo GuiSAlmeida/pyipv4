@@ -6,6 +6,8 @@ class PyIpv4:
         self.ip = ip
         self.mask = mask
         self.cidr = cidr
+        self._set_broadcast()
+        self._set_network()
 
     @property
     def ip(self):
@@ -19,11 +21,25 @@ class PyIpv4:
     def cidr(self):
         return self._cidr
 
+    @property
+    def network(self):
+        return self._network
+
+    @property
+    def broadcast(self):
+        return self._broadcast
+
+    @property
+    def ips_num(self):
+        return self._get_ip_num()
+
     @ip.setter
     def ip(self, ip):
         if not self._ip_validate(ip):
             raise ValueError('Ip inválido!')
+
         self._ip = ip
+        self._ip_bin = self._ip_to_bin(ip)
 
     @mask.setter
     def mask(self, mask):
@@ -31,8 +47,12 @@ class PyIpv4:
             return
         if not self._ip_validate(mask):
             raise ValueError('Máscara inválida!')
+
         self._mask = mask
         self._mask_bin = self._ip_to_bin(mask)
+
+        if not hasattr(self, 'cidr'):
+            self.cidr = self._mask_bin.count('1')
 
     @cidr.setter
     def cidr(self, cidr):
@@ -46,6 +66,10 @@ class PyIpv4:
             raise ValueError('Cidr excede limite de 32Bits.')
 
         self._cidr = cidr
+        self._mask_bin = (cidr * '1').ljust(32, '0')
+
+        if not hasattr(self, 'mask'):
+            self.mask = self._bin_to_ip(self._mask_bin)
 
     @staticmethod
     def _ip_validate(ip):
@@ -60,3 +84,26 @@ class PyIpv4:
         blocs = ip.split('.')
         octets = [bin(int(bloc))[2:].zfill(8) for bloc in blocs]
         return ''.join(octets)
+
+    @staticmethod
+    def _bin_to_ip(ip):
+        octets_len = 8
+        blocs = [int(ip[i:octets_len + i], 2) for i in range(0, 32, octets_len)]
+        ip_decimal = [str(bloc) for bloc in blocs]
+        return '.'.join(ip_decimal)
+
+    def _set_broadcast(self):
+        host_bits = 32 - self.cidr
+        self._broadcast_bin = self._ip_bin[:self.cidr] + (host_bits * '1')
+        self._broadcast = self._bin_to_ip(self._broadcast_bin)
+        return self._broadcast
+
+    def _set_network(self):
+        host_bits = 32 - self.cidr
+        self._network_bin = self._ip_bin[:self.cidr] + (host_bits * '0')
+        self._network = self._bin_to_ip(self._network_bin)
+        print(self._network)
+        return self._network
+
+    def _get_ip_num(self):
+        return (2 ** (32 - self.cidr)) - 2
