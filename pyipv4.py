@@ -2,7 +2,7 @@ import re
 
 
 class PyIpv4:
-    def __init__(self, ip, mask=None, cidr=None):
+    def __init__(self, ip, mask='255.255.255.0', cidr=24):
         self.ip = ip
         self.mask = mask
         self.cidr = cidr
@@ -33,10 +33,14 @@ class PyIpv4:
     def ips_num(self):
         return self._get_ip_num()
 
+    @property
+    def range(self):
+        return self._get_range()
+
     @ip.setter
     def ip(self, ip):
         if not self._ip_validate(ip):
-            raise ValueError('Ip inválido!')
+            raise ValueError('Invalid IP!')
 
         self._ip = ip
         self._ip_bin = self._ip_to_bin(ip)
@@ -46,7 +50,7 @@ class PyIpv4:
         if not mask:
             return
         if not self._ip_validate(mask):
-            raise ValueError('Máscara inválida!')
+            raise ValueError('Invalid Mask!')
 
         self._mask = mask
         self._mask_bin = self._ip_to_bin(mask)
@@ -60,10 +64,10 @@ class PyIpv4:
             return
 
         if not isinstance(cidr, int):
-            raise TypeError('Cidr precisa ser um número inteiro.')
+            raise TypeError('CIDR needs a integer number.')
 
         if cidr > 32:
-            raise ValueError('Cidr excede limite de 32Bits.')
+            raise ValueError('CIDR exceeds the limit of 32Bits.')
 
         self._cidr = cidr
         self._mask_bin = (cidr * '1').ljust(32, '0')
@@ -88,7 +92,9 @@ class PyIpv4:
     @staticmethod
     def _bin_to_ip(ip):
         octets_len = 8
-        blocs = [int(ip[i:octets_len + i], 2) for i in range(0, 32, octets_len)]
+        blocs = [int(ip[i:octets_len + i], 2)
+                 for i in range(0, 32, octets_len)]
+
         ip_decimal = [str(bloc) for bloc in blocs]
         return '.'.join(ip_decimal)
 
@@ -102,8 +108,15 @@ class PyIpv4:
         host_bits = 32 - self.cidr
         self._network_bin = self._ip_bin[:self.cidr] + (host_bits * '0')
         self._network = self._bin_to_ip(self._network_bin)
-        print(self._network)
         return self._network
 
     def _get_ip_num(self):
         return (2 ** (32 - self.cidr)) - 2
+
+    def _get_range(self):
+        host_bits = 31 - self.cidr
+        self._first_host_bin = self._ip_bin[:self.cidr] + (host_bits * '0' + '1')
+        self._last_host_bin = self._ip_bin[:self.cidr] + (host_bits * '1' + '0')
+        self._first_host = self._bin_to_ip(self._first_host_bin)
+        self._last_host = self._bin_to_ip(self._last_host_bin)
+        return f'{self._first_host} - {self._last_host}'
